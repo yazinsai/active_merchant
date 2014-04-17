@@ -37,6 +37,6 @@ test:
       environment:
         BUNDLE_GEMFILE: Gemfile_rails31
 
-    - rvm 2.0.0 do bundle && bundle exec rake test
+    - rvm 2.1.0 do bundle exec rake test:
       environment:
         BUNDLE_GEMFILE: Gemfile_rails30
