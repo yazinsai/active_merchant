@@ -1,42 +1,39 @@
 dependencies:
   override:
-    - bundle install --path vendor/rails40cache:
+    - bundle install --path vendor/bundle/rails40cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails40
 
-    - bundle install --path vendor/rails40cache:
+    - bundle install --path vendor/bundle/rails32cache:
         environment:
           BUNDLE_GEMFILE: Gemfile
 
-    - bundle install --path vendor/rails31cache:
+    - bundle install --path vendor/bundle/rails31cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails31
 
-    - bundle install --path vendor/rails30cache:
+    - bundle install --path vendor/bundle/rails30cache:
         environment:
-          BUNDLE_GEMFILE: Gemfile_rails31
+          BUNDLE_GEMFILE: Gemfile_rails30
 
-    - bundle install --path vendor/rails23cache:
+    - bundle install --path vendor/bundle/rails23cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails23
 
-  cache_directories:
-    - "vendor"
-
 test:
   override:
-    - rvm 2.1.0 do bundle exec rake test:
+    - rvm 2.1.0 do rake test:
         environment:
-          BUNDLE_GEMFILE: Gemfile_rails40
+          GEM_HOME: ~/vendor/bundle/rails40cache
 
-    - rvm 2.1.0 do bundle exec rake test:
+    - rvm 2.1.0 do rake test:
         environment:
-          BUNDLE_GEMFILE: Gemfile
+          GEM_HOME: ~/vendor/bundle/rails32cache
 
-    - rvm 2.1.0 do bundle exec rake test:
+    - rvm 2.1.0 do rake test:
         environment:
-          BUNDLE_GEMFILE: Gemfile_rails31
+          GEM_HOME: ~/vendor/bundle/rails31cache
 
-    - rvm 2.1.0 do bundle exec rake test:
+    - rvm 2.1.0 do rake test:
         environment:
-          BUNDLE_GEMFILE: Gemfile_rails30
+          GEM_HOME: ~/vendor/bundle/rails30cache
