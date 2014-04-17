@@ -1,6 +1,6 @@
 test:
   override:
     - rvm 2.1.0 do bundle && bundle exec rake test
-    - rvm 2.0.0-p451 do bundle && bundle exec rake test
-    - rvm 1.9.3-p320 do bundle && bundle exec rake test
-    - rvm 1.9.2-p545 do bundle && bundle exec rake test
+    - rvm 2.0.0 do bundle && bundle exec rake test
+    - rvm 1.9.3 do bundle && bundle exec rake test
+    - rvm 1.9.2 do bundle && bundle exec rake test
