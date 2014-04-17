@@ -26,17 +26,17 @@ dependencies:
 test:
   override:
     - rvm 2.1.0 do bundle exec rake test:
-      environment:
-        BUNDLE_GEMFILE: Gemfile_rails40
+        environment:
+          BUNDLE_GEMFILE: Gemfile_rails40
 
     - rvm 2.1.0 do bundle exec rake test:
-      environment:
-        BUNDLE_GEMFILE: Gemfile
+        environment:
+          BUNDLE_GEMFILE: Gemfile
 
     - rvm 2.1.0 do bundle exec rake test:
-      environment:
-        BUNDLE_GEMFILE: Gemfile_rails31
+        environment:
+          BUNDLE_GEMFILE: Gemfile_rails31
 
-    - rvm 2.1.0 do bundle exec rake test:
-      environment:
-        BUNDLE_GEMFILE: Gemfile_rails30
+    - rvm 2.1.0 do bundle exec rake test
+        environment:
+          BUNDLE_GEMFILE: Gemfile_rails30
