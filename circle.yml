@@ -3,26 +3,27 @@ dependencies:
     - bundle install --path vendor/bundle/rails40cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails40
+        timeout: 360
 
     - bundle install --path vendor/bundle/rails32cache:
         environment:
           BUNDLE_GEMFILE: Gemfile
-        timeout: 240
+        timeout: 360
 
     - bundle install --path vendor/bundle/rails31cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails31
-        timeout: 240
+        timeout: 360
 
     - bundle install --path vendor/bundle/rails30cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails30
-        timeout: 240
+        timeout: 360
 
     - bundle install --path vendor/bundle/rails23cache:
         environment:
           BUNDLE_GEMFILE: Gemfile_rails23
-        timeout: 240
+        timeout: 360
 
 test:
   override:
