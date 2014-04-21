@@ -1,44 +1,17 @@
-dependencies:
-  override:
-    - bundle install --path vendor/bundle/rails40cache:
-        environment:
-          BUNDLE_GEMFILE: Gemfile_rails40
-        timeout: 360
-
-    - bundle install --path vendor/bundle/rails32cache:
-        environment:
-          BUNDLE_GEMFILE: Gemfile
-        timeout: 360
-
-    - bundle install --path vendor/bundle/rails31cache:
-        environment:
-          BUNDLE_GEMFILE: Gemfile_rails31
-        timeout: 360
-
-    - bundle install --path vendor/bundle/rails30cache:
-        environment:
-          BUNDLE_GEMFILE: Gemfile_rails30
-        timeout: 360
-
-    - bundle install --path vendor/bundle/rails23cache:
-        environment:
-          BUNDLE_GEMFILE: Gemfile_rails23
-        timeout: 360
-
 test:
   override:
-    - rvm 2.1.0 do rake test:
+    - rvm 2.1.0 do bundle && rvm 2.1.0 do bundle exec rake test:
         environment:
-          GEM_HOME: ~/vendor/bundle/rails40cache
+          BUNDLE_GEMFILE: Gemfile_rails40
 
-    - rvm 2.1.0 do rake test:
+    - rvm 2.1.0 do bundle && rvm 2.1.0 do bundle exec rake test:
         environment:
-          GEM_HOME: ~/vendor/bundle/rails32cache
+          BUNDLE_GEMFILE: Gemfile
 
-    - rvm 2.1.0 do rake test:
+    - rvm 2.1.0 do bundle && rvm 2.1.0 do bundle exec rake test:
         environment:
-          GEM_HOME: ~/vendor/bundle/rails31cache
+          BUNDLE_GEMFILE: Gemfile_rails31
 
-    - rvm 2.1.0 do rake test:
+    - rvm 2.1.0 do bundle && rvm 2.1.0 do bundle exec rake test:
         environment:
-          GEM_HOME: ~/vendor/bundle/rails30cache
+          BUNDLE_GEMFILE: Gemfile_rails30
