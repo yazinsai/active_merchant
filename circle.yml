@@ -1,8 +1,6 @@
-machine:
+test:
   environment:
     NOKOGIRI_USE_SYSTEM_LIBRARIES: true
-
-test:
   override:
     - rvm 2.1.0 do bundle && rvm 2.1.0 do bundle exec rake test:
         environment:
