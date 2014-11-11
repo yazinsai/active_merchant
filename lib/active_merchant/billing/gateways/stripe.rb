@@ -1,9 +1,12 @@
 require 'active_support/core_ext/hash/slice'
+require 'openssl'
+require 'byebug'
 
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class StripeGateway < Gateway
-      self.live_url = 'https://api.stripe.com/v1/'
+      #self.live_url = 'https://api.stripe.com/v1/'
+      self.live_url = 'https://qa-edge-api.stripe.com/v1/'
 
       AVS_CODE_TRANSLATOR = {
         'line1: pass, zip: pass' => 'Y',
@@ -234,6 +237,49 @@ module ActiveMerchant #:nodoc:
         add_customer(post, payment, options)
         add_customer_data(post, options)
         post[:description] = options[:description]
+      end
+
+      class EMVData
+        attr_reader :number, :track_data
+
+        def initialize(tlv_string)
+          @tlv = OpenSSL::ASN1.decode([tlv_string].pack("H*"))
+          handle_stripe_formatting
+        end
+
+        def icc_data
+          # strip top-level container
+          '500B564953412043524544495457114761739001010119D151220117589893895A0847617390010101195F201A56495341204143515549524552205445535420434152442030315F24031512315F280208405F2A0208265F300202015F34010182025C008407A0000000031010950502000080009A031408259B02E8009C01009F02060000000734499F03060000000000009F0607A00000000310109F0902008C9F100706010A03A080009F120F4352454449544F20444520564953419F1A0208269F1C0831373030303437309F1E0831373030303437309F2608EB2EC0F472BEA0A49F2701809F3303E0B8C89F34031E03009F3501229F360200C39F37040A27296F9F4104000001319F4502DAC5DFAE5711476173FFFFFF0119D15122011758989389DFAE5A08476173FFFFFF0119'
+          #@tlv.value.inject(""){|sum, n| sum << n.to_der}.unpack("H*").first
+        end
+
+        # def number
+        #   @number ||= @tlv.value.select{|x| x.tag == 23}.first.value.unpack("H*").first
+        # end
+
+        def track_data
+          ";#{@track_data.downcase.gsub('d', '=')}?"
+        end
+
+        private
+
+        def handle_stripe_formatting
+          @number = @tlv.value.select{|x| x.tag == 26}.first.value.unpack("H*").first
+          @track_data = @tlv.value.select{|x| x.tag == 23}.first.value.unpack("H*").first
+          @tlv.value.delete_if{|x| x.tag == 23 || x.tag == 26}
+        end
+      end
+
+      def create_post_for_auth_or_purchase(money, creditcard, options)
+        post = {}
+        add_creditcard(post, creditcard, options)
+        add_customer(post, creditcard, options)
+        unless creditcard.respond_to?(:icc_data) && creditcard.icc_data
+          add_amount(post, money, options, true)
+          add_customer_data(post,options)
+          post[:description] = options[:description]
+        end
+
         post[:statement_description] = options[:statement_description]
 
         post[:metadata] = {}
@@ -243,6 +289,7 @@ module ActiveMerchant #:nodoc:
 
         add_flags(post, options)
         add_application_fee(post, options)
+        post = creditcard.icc_data ? {card: post[:card]} : post
         post
       end
 
@@ -282,7 +329,13 @@ module ActiveMerchant #:nodoc:
 
       def add_creditcard(post, creditcard, options)
         card = {}
-        if creditcard.respond_to?(:number)
+        if creditcard.respond_to?(:icc_data) && creditcard.icc_data.present?
+          emv_credit_card = EMVData.new(creditcard.icc_data)
+          card[:number] = emv_credit_card.number
+          card[:swipe_data] = emv_credit_card.track_data
+          card[:icc_data] = emv_credit_card.icc_data
+          post[:card] = card
+        elsif creditcard.respond_to?(:number)
           if creditcard.respond_to?(:track_data) && creditcard.track_data.present?
             card[:swipe_data] = creditcard.track_data
           else
