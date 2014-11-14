@@ -422,6 +422,7 @@ module ActiveMerchant #:nodoc:
           :authorization => success ? response["id"] : response["error"]["charge"],
           :avs_result => { :code => avs_code },
           :cvv_result => cvc_code,
+          :emv_authorization => card["icc_data"],
           :error_code => success ? nil : STANDARD_ERROR_CODE_MAPPING[response["error"]["code"]]
         )
       end
