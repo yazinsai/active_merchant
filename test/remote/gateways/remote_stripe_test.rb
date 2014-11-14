@@ -48,7 +48,6 @@ class RemoteStripeTest < Test::Unit::TestCase
   end
 
   def test_successful_purchase_with_icc_data
-    debugger
     assert response = @gateway.purchase(@amount, @emv_credit_card, @options)
     assert_success response
     assert_equal "charge", response.params["object"]

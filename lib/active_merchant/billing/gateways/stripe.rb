@@ -1,12 +1,10 @@
 require 'active_support/core_ext/hash/slice'
-require 'openssl'
-require 'byebug'
+require 'grizzly_ber'
 
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class StripeGateway < Gateway
-      #self.live_url = 'https://api.stripe.com/v1/'
-      self.live_url = 'https://qa-edge-api.stripe.com/v1/'
+      self.live_url = 'https://api.stripe.com/v1/'
 
       AVS_CODE_TRANSLATOR = {
         'line1: pass, zip: pass' => 'Y',
@@ -226,70 +224,43 @@ module ActiveMerchant #:nodoc:
         end
       end
 
+      class StripeICCData
+        # Handles Stripe-specific parsing of a raw BER-TLV string.
+        attr_reader :number, :track_data, :icc_data
+
+        def initialize(raw_tlv_string)
+          parsed_tlv = GrizzlyBer.new(raw_tlv_string)
+
+          # Stripe requires the card number and track data to be extracted from the ICC data.
+          @number = parsed_tlv.value.select{|x| x.tag == 0x5A}.first.value
+          @track_data = parsed_tlv.value.select{|x| x.tag == 0x57}.first.value
+
+          # The card number and track data is removed from the ICC data here.
+          parsed_tlv.value.delete_if{|x| x.tag == 0x57 || x.tag == 0x5A}
+          @icc_data = parsed_tlv.encode_only_values
+        end
+      end
+
       def create_post_for_auth_or_purchase(money, payment, options)
         post = {}
-        add_amount(post, money, options, true)
+
         if payment.is_a?(StripePaymentToken)
           add_payment_token(post, payment, options)
         else
           add_creditcard(post, payment, options)
         end
-        add_customer(post, payment, options)
-        add_customer_data(post, options)
-        post[:description] = options[:description]
-      end
-
-      class EMVData
-        attr_reader :number, :track_data
-
-        def initialize(tlv_string)
-          @tlv = OpenSSL::ASN1.decode([tlv_string].pack("H*"))
-          handle_stripe_formatting
-        end
-
-        def icc_data
-          # strip top-level container
-          '500B564953412043524544495457114761739001010119D151220117589893895A0847617390010101195F201A56495341204143515549524552205445535420434152442030315F24031512315F280208405F2A0208265F300202015F34010182025C008407A0000000031010950502000080009A031408259B02E8009C01009F02060000000734499F03060000000000009F0607A00000000310109F0902008C9F100706010A03A080009F120F4352454449544F20444520564953419F1A0208269F1C0831373030303437309F1E0831373030303437309F2608EB2EC0F472BEA0A49F2701809F3303E0B8C89F34031E03009F3501229F360200C39F37040A27296F9F4104000001319F4502DAC5DFAE5711476173FFFFFF0119D15122011758989389DFAE5A08476173FFFFFF0119'
-          #@tlv.value.inject(""){|sum, n| sum << n.to_der}.unpack("H*").first
-        end
-
-        # def number
-        #   @number ||= @tlv.value.select{|x| x.tag == 23}.first.value.unpack("H*").first
-        # end
-
-        def track_data
-          ";#{@track_data.downcase.gsub('d', '=')}?"
-        end
-
-        private
-
-        def handle_stripe_formatting
-          @number = @tlv.value.select{|x| x.tag == 26}.first.value.unpack("H*").first
-          @track_data = @tlv.value.select{|x| x.tag == 23}.first.value.unpack("H*").first
-          @tlv.value.delete_if{|x| x.tag == 23 || x.tag == 26}
-        end
-      end
-
-      def create_post_for_auth_or_purchase(money, creditcard, options)
-        post = {}
-        add_creditcard(post, creditcard, options)
-        add_customer(post, creditcard, options)
-        unless creditcard.respond_to?(:icc_data) && creditcard.icc_data
+        unless payment.respond_to?(:icc_data) && payment.icc_data.present?
           add_amount(post, money, options, true)
-          add_customer_data(post,options)
+          add_customer_data(post, options)
+          add_metadata(post, options)
           post[:description] = options[:description]
+          post[:statement_description] = options[:statement_description]
         end
 
-        post[:statement_description] = options[:statement_description]
-
-        post[:metadata] = {}
-        post[:metadata][:email] = options[:email] if options[:email]
-        post[:metadata][:order_id] = options[:order_id] if options[:order_id]
-        post.delete(:metadata) if post[:metadata].empty?
-
+        add_customer(post, payment, options)
         add_flags(post, options)
         add_application_fee(post, options)
-        post = creditcard.icc_data ? {card: post[:card]} : post
+
         post
       end
 
@@ -330,7 +301,7 @@ module ActiveMerchant #:nodoc:
       def add_creditcard(post, creditcard, options)
         card = {}
         if creditcard.respond_to?(:icc_data) && creditcard.icc_data.present?
-          emv_credit_card = EMVData.new(creditcard.icc_data)
+          emv_credit_card = StripeICCData.new(creditcard.icc_data)
           card[:number] = emv_credit_card.number
           card[:swipe_data] = emv_credit_card.track_data
           card[:icc_data] = emv_credit_card.icc_data
@@ -345,7 +316,6 @@ module ActiveMerchant #:nodoc:
             card[:cvc] = creditcard.verification_value if creditcard.verification_value?
             card[:name] = creditcard.name if creditcard.name
           end
-
           post[:card] = card
           add_address(post, options)
         elsif creditcard.kind_of?(String)
@@ -369,6 +339,13 @@ module ActiveMerchant #:nodoc:
       def add_flags(post, options)
         post[:uncaptured] = true if options[:uncaptured]
         post[:recurring] = true if (options[:eci] == 'recurring' || options[:recurring])
+      end
+
+      def add_metadata(post, options = {})
+        post[:metadata] = {}
+        post[:metadata][:email] = options[:email] if options[:email]
+        post[:metadata][:order_id] = options[:order_id] if options[:order_id]
+        post.delete(:metadata) if post[:metadata].empty?
       end
 
       def fetch_application_fees(identification, options = {})
