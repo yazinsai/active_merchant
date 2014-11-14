@@ -132,7 +132,9 @@ module ActiveMerchant #:nodoc:
       # @return [String]
       attr_accessor :track_data
 
-      # Returns or sets the EMV/ICC/TLV/ASN1 data for the card
+      # Returns or sets the ICC/ASN1 credit card data for a EMV transaction, typically this is a BER-encoded TLV string.
+      #
+      # @return [String]
       attr_accessor :icc_data
 
       def type
