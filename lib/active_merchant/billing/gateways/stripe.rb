@@ -231,13 +231,34 @@ module ActiveMerchant #:nodoc:
         def initialize(raw_tlv_string)
           parsed_tlv = GrizzlyBer.new(raw_tlv_string)
 
-          # Stripe requires the card number and track data to be extracted from the ICC data.
-          @number = parsed_tlv.value.select{|x| x.tag == 0x5A}.first.value
-          track_data = parsed_tlv.value.select{|x| x.tag == 0x57}.first.value
+          # Stripe requires the card number and track data to be extracted and removed from the ICC data.
+          @number = (number = parsed_tlv.find(0x5A)) && number.value
+          track_data = (track_data = parsed_tlv.find(0x57)) && track_data.value
           @track_data = ";#{track_data.gsub('D', '=')}?"
 
           # The card number and track data is removed from the ICC data here.
           parsed_tlv.value.delete_if{|x| x.tag == 0x57 || x.tag == 0x5A}
+
+          # A few other parameters are saved out of the ICC Data to be later added to the receipt.
+          @emv_application_id = parsed_tlv.find(0x4F) || parsed_tlv.find(0x9F06) || parsed_tlv.find(0x84)
+          @emv_application_id &&= @emv_application_id.value
+          @emv_application_label = parsed_tlv.find(0x9F12) || parsed_tlv.find(0x50)
+          @emv_application_label &&= [@emv_application_label.value].pack("H*")
+          cvm_result = parsed_tlv.find(0x9F34)
+          @emv_verification_method = cvm_result.value[0..1].hex & 0x3F unless cvm_result.nil? || cvm_result.value.length < 2
+          # Some notes on the verification method:
+          #  EMV Book 4 Section 6.3.4.5 and EMV Book 3 Annex C3
+          #  The first byte is the method and the second byte is what condition the rule was applied in.
+          #  The third byte is whether verfication was successful.
+          #  The top two bits of the first byte are RFU and failover instructions so are dropped with the 3F mask.
+          #  Valid values are:
+          #   01 - Offline PIN (Plaintext)
+          #   02 - Online PIN
+          #   03 - Offline PIN (Plaintext) and Signature
+          #   04 - Offline PIN (Enciphered)
+          #   05 - Offline PIN (Enciphered) and Signature
+          #   1E - Signature
+
           @icc_data = parsed_tlv.encode_only_values
         end
       end
