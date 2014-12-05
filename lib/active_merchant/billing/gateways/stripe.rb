@@ -63,7 +63,7 @@ module ActiveMerchant #:nodoc:
           end
           r.process do
             post = create_post_for_auth_or_purchase(money, payment, options)
-            post[:capture] = "false"
+            post[:capture] = "false" unless payment.respond_to?(:icc_data) && payment.icc_data.present?
             commit(:post, 'charges', post, options)
           end
         end.responses.last
