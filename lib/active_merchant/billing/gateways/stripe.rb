@@ -91,10 +91,13 @@ module ActiveMerchant #:nodoc:
 
       def capture(money, authorization, options = {})
         post = {}
-
-        add_amount(post, money, options)
-        add_application_fee(post, options)
-        post[:card] = {icc_data: options[:emv_authorization]} if options[:emv_authorization]
+        if options[:emv_authorization]
+          emv_tc_icc_data = GrizzlyBer.new(options[:emv_authorization]).encode_only_values
+          post[:card] = {icc_data: emv_tc_icc_data}
+        else
+          add_amount(post, money, options)
+          add_application_fee(post, options)
+        end
 
         commit(:post, "charges/#{CGI.escape(authorization)}/capture", post, options)
       end
