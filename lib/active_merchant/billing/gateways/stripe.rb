@@ -237,20 +237,21 @@ module ActiveMerchant #:nodoc:
           parsed_tlv = GrizzlyBer.new(raw_tlv_string)
 
           # Stripe requires the card number and track data to be extracted and removed from the ICC data.
-          @number = (number = parsed_tlv.find(0x5A)) && number.value
-          track_data = (track_data = parsed_tlv.find(0x57)) && track_data.value
+          @number = parsed_tlv.hex_value_of_first_element_with_tag("5A")
+          track_data = parsed_tlv.hex_value_of_first_element_with_tag("57")
           @track_data = ";#{track_data.gsub('D', '=')}?"
 
           # The card number and track data is removed from the ICC data here.
-          parsed_tlv.value.delete_if{|x| x.tag == 0x57 || x.tag == 0x5A}
+          parsed_tlv.remove!("57")
+          parsed_tlv.remove!("5A")
 
           # A few other parameters are saved out of the ICC Data to be later added to the receipt.
-          @emv_application_id = parsed_tlv.find(0x4F) || parsed_tlv.find(0x9F06) || parsed_tlv.find(0x84)
-          @emv_application_id &&= @emv_application_id.value
-          @emv_application_label = parsed_tlv.find(0x9F12) || parsed_tlv.find(0x50)
-          @emv_application_label &&= [@emv_application_label.value].pack("H*")
-          cvm_result = parsed_tlv.find(0x9F34)
-          @emv_verification_method = cvm_result.value[0..1].hex & 0x3F unless cvm_result.nil? || cvm_result.value.length < 2
+          @emv_application_id =   parsed_tlv.hex_value_of_first_element_with_tag("4F")
+          @emv_application_id ||= parsed_tlv.hex_value_of_first_element_with_tag("9F06")
+          @emv_application_id ||= parsed_tlv.hex_value_of_first_element_with_tag("84")
+          @emv_application_label = parsed_tlv["9F12"] || parsed_tlv["50"]
+          @emv_application_label &&= @emv_application_label.pack("C*")
+          @emv_verification_method = parsed_tlv["9F34"].first & 0x3F unless parsed_tlv["9F34"].nil? || parsed_tlv["9F34"].length < 1
           # Some notes on the verification method:
           #  EMV Book 4 Section 6.3.4.5 and EMV Book 3 Annex C3
           #  The first byte is the method and the second byte is what condition the rule was applied in.
@@ -264,7 +265,7 @@ module ActiveMerchant #:nodoc:
           #   05 - Offline PIN (Enciphered) and Signature
           #   1E - Signature
 
-          @icc_data = parsed_tlv.encode_only_values
+          @icc_data = parsed_tlv.to_ber
         end
       end
 
