@@ -231,7 +231,7 @@ module ActiveMerchant #:nodoc:
 
       class StripeICCData
         # Handles Stripe-specific parsing of a raw BER-TLV string.
-        attr_reader :number, :track_data, :icc_data
+        attr_reader :number, :track_data, :icc_data, :emv_application_id, :emv_application_label, :emv_verification_method
 
         def initialize(raw_tlv_string)
           parsed_tlv = GrizzlyBer.new(raw_tlv_string)
@@ -329,6 +329,11 @@ module ActiveMerchant #:nodoc:
         card = {}
         if creditcard.respond_to?(:icc_data) && creditcard.icc_data.present?
           emv_credit_card = StripeICCData.new(creditcard.icc_data)
+          @emv_receipt = {
+            :application_id => emv_credit_card.emv_application_id,
+            :application_label => emv_credit_card.emv_application_label,
+            :verification_method => emv_credit_card.emv_verification_method
+          }
           card[:number] = emv_credit_card.number
           card[:swipe_data] = emv_credit_card.track_data
           card[:icc_data] = emv_credit_card.icc_data
@@ -438,6 +443,7 @@ module ActiveMerchant #:nodoc:
         response = api_request(method, url, parameters, options)
         success = !response.key?("error")
 
+        response["emv"] = @emv_receipt unless @emv_receipt.nil?
         card = response["card"] || response["active_card"] || {}
         avs_code = AVS_CODE_TRANSLATOR["line1: #{card["address_line1_check"]}, zip: #{card["address_zip_check"]}"]
         cvc_code = CVC_CODE_TRANSLATOR[card["cvc_check"]]
