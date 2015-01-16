@@ -1,5 +1,4 @@
 require 'active_support/core_ext/hash/slice'
-require 'grizzly_ber'
 
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
@@ -92,6 +91,7 @@ module ActiveMerchant #:nodoc:
       def capture(money, authorization, options = {})
         post = {}
         if options[:emv_authorization]
+          require 'grizzly_ber'
           emv_tc_icc_data = GrizzlyBer.new(options[:emv_authorization]).encode_only_values
           post[:card] = {icc_data: emv_tc_icc_data}
         else
@@ -234,6 +234,7 @@ module ActiveMerchant #:nodoc:
         attr_reader :number, :track_data, :icc_data, :emv_application_id, :emv_application_label, :emv_verification_method
 
         def initialize(raw_tlv_string)
+          require 'grizzly_ber'
           parsed_tlv = GrizzlyBer.new(raw_tlv_string)
 
           # Stripe requires the card number and track data to be extracted and removed from the ICC data.
