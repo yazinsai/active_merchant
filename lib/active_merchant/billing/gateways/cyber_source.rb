@@ -415,6 +415,19 @@ module ActiveMerchant #:nodoc:
         xml.tag! 'clientLibrary' ,'Ruby Active Merchant'
         xml.tag! 'clientLibraryVersion',  VERSION
         xml.tag! 'clientEnvironment' , RUBY_PLATFORM
+        
+        add_billing_descriptor(xml, options)
+      end
+
+      # Must be placed right after the <clientEnvironment> tag above
+      def add_billing_descriptor(xml, options)
+        billing_descriptor = options[:billing_descriptor] || "WhitePayments.com"
+        billing_descriptor_contact = options[:billing_descriptor_contact] || "+971503124093"
+
+        xml.tag! 'invoiceHeader' do
+          xml.tag! 'merchantDescriptor', billing_descriptor
+          xml.tag! 'merchantDescriptorContact', billing_descriptor_contact
+        end
       end
 
       def add_purchase_data(xml, money = 0, include_grand_total = false, options={})
